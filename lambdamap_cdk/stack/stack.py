@@ -25,24 +25,20 @@ class LambdaMapStack(cdk.Stack):
         """
         super().__init__(scope, construct_id)
 
-        folder = kwargs.get("folder", None)
+        folder = kwargs.get("folder")
 
         if folder is None:
             folder = os.path.dirname(os.path.realpath(__file__))
 
         function_name = kwargs.get("function_name", "LambdaMapFunction")
-        memory_size = kwargs.get("memory_size", 256) 
-        timeout_secs = kwargs.get("timeout_secs", 900) 
-        extra_cmds = kwargs.get("extra_cmds", None)
+        memory_size = kwargs.get("memory_size", 256)
+        timeout_secs = kwargs.get("timeout_secs", 900)
+        extra_cmds = kwargs.get("extra_cmds")
 
-        if extra_cmds is None:
-            build_args = None
-        else:
-            build_args = {"EXTRA_CMDS": extra_cmds}
-
+        build_args = None if extra_cmds is None else {"EXTRA_CMDS": extra_cmds}
         ecr_image = \
-            aws_lambda.EcrImageCode \
-                      .from_asset_image(directory=folder,
+                aws_lambda.EcrImageCode \
+                          .from_asset_image(directory=folder,
                                         build_args=build_args)
 
         lambda_function = aws_lambda.Function(

@@ -42,25 +42,20 @@ class LambdaFunction:
     def invoke_handler(self, payload):
         """
         """
-        
+
         client = self.client
         payload = base64.b64encode(cloudpickle.dumps(payload)).decode("ascii")
         payload = json.dumps(payload)
-        
+
         resp = client.invoke(
             FunctionName=self._lambda_arn,
             InvocationType="RequestResponse",
             Payload=payload
         )
-        
+
         resp_bytes = resp["Payload"].read()
-        
-        if "FunctionError" in resp:
-            result = resp_bytes
-        else:
-            result = cloudpickle.loads(resp_bytes)
-        
-        return result
+
+        return resp_bytes if "FunctionError" in resp else cloudpickle.loads(resp_bytes)
 
     
 class LambdaExecutor:
@@ -88,28 +83,27 @@ class LambdaExecutor:
     def map(self, func, payloads, local_mode=False):
         """
         """
-        
+
         from tqdm.autonotebook import tqdm
-        
+
         if local_mode:
             f = func
         else:
             f = LambdaFunction(func, self._client, self._lambda_arn)
-        
+
         ex = self._executor
         wait_for = [ex.submit(f, *p["args"], **p["kwargs"]) for p in payloads]
         tbar = tqdm(total=len(wait_for))
         prev_n_done = 0
         n_done = sum(f.done() for f in wait_for)
-        
+
         while n_done != len(wait_for):
             tbar.update(n_done - prev_n_done)
             prev_n_done = n_done
             n_done = sum(f.done() for f in wait_for)
             time.sleep(0.5)
-            
-        tbar.update(n_done - prev_n_done)   
+
+        tbar.update(n_done - prev_n_done)
         tbar.close()
-            
-        results = [f.result() for f in futures.as_completed(wait_for)]
-        return results
+
+        return [f.result() for f in futures.as_completed(wait_for)]
